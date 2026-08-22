@@ -11,7 +11,9 @@ import {
   Wine, 
   Check, 
   RefreshCw,
-  UserCheck
+  UserCheck,
+  Lock,
+  LogIn
 } from 'lucide-react';
 import { MemberProfile } from '../types';
 
@@ -22,6 +24,8 @@ interface MyProfileModalProps {
   onUpdateProfile: (updated: MemberProfile) => void;
   personas: MemberProfile[];
   onSwitchPersona: (persona: MemberProfile) => void;
+  isLoggedIn?: boolean;
+  onOpenLogin?: () => void;
 }
 
 export const MyProfileModal: React.FC<MyProfileModalProps> = ({
@@ -30,7 +34,9 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({
   currentPersona,
   onUpdateProfile,
   personas,
-  onSwitchPersona
+  onSwitchPersona,
+  isLoggedIn = true,
+  onOpenLogin
 }) => {
   const [headline, setHeadline] = useState(currentPersona.headline);
   const [bio, setBio] = useState(currentPersona.bio);
@@ -43,9 +49,20 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({
     curatorTips: string[];
   } | null>(null);
 
+  // Sync state if currentPersona changes
+  React.useEffect(() => {
+    setHeadline(currentPersona.headline);
+    setBio(currentPersona.bio);
+    setIdealDate(currentPersona.idealDate);
+  }, [currentPersona]);
+
   if (!isOpen) return null;
 
   const handlePolish = async () => {
+    if (!isLoggedIn) {
+      if (onOpenLogin) onOpenLogin();
+      return;
+    }
     setLoadingPolish(true);
     try {
       const res = await fetch('/api/gemini/profile-polish', {
@@ -70,6 +87,10 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({
   };
 
   const applyPolish = () => {
+    if (!isLoggedIn) {
+      if (onOpenLogin) onOpenLogin();
+      return;
+    }
     if (polishResult) {
       setHeadline(polishResult.polishedHeadline);
       setBio(polishResult.polishedBio);
@@ -84,6 +105,10 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({
   };
 
   const handleSave = () => {
+    if (!isLoggedIn) {
+      if (onOpenLogin) onOpenLogin();
+      return;
+    }
     const updated: MemberProfile = {
       ...currentPersona,
       headline,
@@ -151,6 +176,31 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({
           </div>
         </div>
 
+        {/* Guest Lock Notice when not logged in */}
+        {!isLoggedIn && (
+          <div className="rounded-sm border border-[#d4af37]/40 bg-[#151515] p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center space-x-2.5">
+              <div className="h-8 w-8 rounded-full bg-[#0a0a0a] border border-[#d4af37]/50 flex items-center justify-center shrink-0">
+                <Lock className="h-4 w-4 text-[#d4af37]" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-white">Guest Preview — Member Profile Locked</p>
+                <p className="text-[11px] text-[#888888]">Please log in or apply for membership to edit details, update statements, or run AI polish.</p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                onClose();
+                if (onOpenLogin) onOpenLogin();
+              }}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-sm bg-gradient-to-tr from-[#c5a059] to-[#8e6e3d] text-white text-xs uppercase tracking-wider font-bold hover:brightness-110 shrink-0 shadow-sm"
+            >
+              <LogIn className="h-3.5 w-3.5" />
+              <span>Log In to Edit</span>
+            </button>
+          </div>
+        )}
+
         {/* Verification Audit Checklist */}
         <div className="rounded-sm border border-[#222222] bg-[#111111] p-4 space-y-2.5">
           <span className="text-[9px] font-bold uppercase tracking-widest text-[#d4af37] block">
@@ -175,38 +225,80 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({
         {/* Form Fields */}
         <div className="space-y-4">
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-[#888888] block mb-1">
-              Headline
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-[#888888]">
+                Headline
+              </label>
+              {!isLoggedIn && (
+                <span className="flex items-center space-x-1 text-[10px] text-[#666666] font-mono">
+                  <Lock className="h-2.5 w-2.5" />
+                  <span>LOCKED</span>
+                </span>
+              )}
+            </div>
             <input
               type="text"
+              disabled={!isLoggedIn}
+              readOnly={!isLoggedIn}
               value={headline}
               onChange={(e) => setHeadline(e.target.value)}
-              className="w-full rounded-sm border border-[#333333] bg-[#151515] px-3.5 py-2.5 text-xs sm:text-sm text-[#e0e0e0] focus:border-[#d4af37] focus:outline-none"
+              className={`w-full rounded-sm border px-3.5 py-2.5 text-xs sm:text-sm transition-all focus:outline-none ${
+                !isLoggedIn 
+                  ? 'border-[#222222] bg-[#0a0a0a] text-[#777777] cursor-not-allowed select-none' 
+                  : 'border-[#333333] bg-[#151515] text-[#e0e0e0] focus:border-[#d4af37]'
+              }`}
             />
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-[#888888] block mb-1">
-              Bio & Lifestyle Statement
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-[#888888]">
+                Bio & Lifestyle Statement
+              </label>
+              {!isLoggedIn && (
+                <span className="flex items-center space-x-1 text-[10px] text-[#666666] font-mono">
+                  <Lock className="h-2.5 w-2.5" />
+                  <span>LOCKED</span>
+                </span>
+              )}
+            </div>
             <textarea
               rows={3}
+              disabled={!isLoggedIn}
+              readOnly={!isLoggedIn}
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              className="w-full rounded-sm border border-[#333333] bg-[#151515] px-3.5 py-2.5 text-xs sm:text-sm text-[#e0e0e0] focus:border-[#d4af37] focus:outline-none"
+              className={`w-full rounded-sm border px-3.5 py-2.5 text-xs sm:text-sm transition-all focus:outline-none ${
+                !isLoggedIn 
+                  ? 'border-[#222222] bg-[#0a0a0a] text-[#777777] cursor-not-allowed select-none' 
+                  : 'border-[#333333] bg-[#151515] text-[#e0e0e0] focus:border-[#d4af37]'
+              }`}
             />
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold uppercase tracking-wider text-[#888888] block mb-1">
-              Ideal First Date Description
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-[#888888]">
+                Ideal First Date Description
+              </label>
+              {!isLoggedIn && (
+                <span className="flex items-center space-x-1 text-[10px] text-[#666666] font-mono">
+                  <Lock className="h-2.5 w-2.5" />
+                  <span>LOCKED</span>
+                </span>
+              )}
+            </div>
             <input
               type="text"
+              disabled={!isLoggedIn}
+              readOnly={!isLoggedIn}
               value={idealDate}
               onChange={(e) => setIdealDate(e.target.value)}
-              className="w-full rounded-sm border border-[#333333] bg-[#151515] px-3.5 py-2.5 text-xs sm:text-sm text-[#e0e0e0] focus:border-[#d4af37] focus:outline-none"
+              className={`w-full rounded-sm border px-3.5 py-2.5 text-xs sm:text-sm transition-all focus:outline-none ${
+                !isLoggedIn 
+                  ? 'border-[#222222] bg-[#0a0a0a] text-[#777777] cursor-not-allowed select-none' 
+                  : 'border-[#333333] bg-[#151515] text-[#e0e0e0] focus:border-[#d4af37]'
+              }`}
             />
           </div>
         </div>
@@ -221,9 +313,10 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({
             <button
               onClick={handlePolish}
               disabled={loadingPolish}
-              className="rounded-sm bg-[#0a0a0a] border border-[#d4af37]/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#d4af37] hover:bg-[#d4af37] hover:text-black transition-all disabled:opacity-50"
+              className="flex items-center space-x-1.5 rounded-sm bg-[#0a0a0a] border border-[#d4af37]/60 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#d4af37] hover:bg-[#d4af37] hover:text-black transition-all disabled:opacity-50"
             >
-              {loadingPolish ? 'Analyzing...' : 'Elevate My Profile'}
+              {!isLoggedIn && <Lock className="h-3 w-3" />}
+              <span>{loadingPolish ? 'Analyzing...' : !isLoggedIn ? 'Log In to Polish' : 'Elevate My Profile'}</span>
             </button>
           </div>
 
@@ -261,7 +354,7 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between pt-2 border-t border-[#222222]">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-[#222222]">
           <div className="flex items-center space-x-2">
             <span className="text-xs text-[#888888]">Switch Persona:</span>
             {personas.map((p) => (
@@ -286,9 +379,10 @@ export const MyProfileModal: React.FC<MyProfileModalProps> = ({
 
           <button
             onClick={handleSave}
-            className="rounded-sm bg-gradient-to-tr from-[#c5a059] to-[#8e6e3d] px-5 py-2 text-xs uppercase tracking-widest font-bold text-white hover:brightness-110 shadow-md"
+            className="flex items-center space-x-1.5 rounded-sm bg-gradient-to-tr from-[#c5a059] to-[#8e6e3d] px-5 py-2 text-xs uppercase tracking-widest font-bold text-white hover:brightness-110 shadow-md w-full sm:w-auto justify-center"
           >
-            Save Changes
+            {!isLoggedIn && <Lock className="h-3.5 w-3.5" />}
+            <span>{!isLoggedIn ? 'Log In to Edit Profile' : 'Save Changes'}</span>
           </button>
         </div>
 

@@ -13,6 +13,7 @@ import { ProfileDetailModal } from './components/ProfileDetailModal';
 import { CompatibilityModal } from './components/CompatibilityModal';
 import { VipDatePlannerModal } from './components/VipDatePlannerModal';
 import { MyProfileModal } from './components/MyProfileModal';
+import { AuthModal } from './components/AuthModal';
 
 import { INITIAL_MEMBERS, INITIAL_EVENTS, INITIAL_USER_PERSONAS } from './data/mockMembers';
 import { MemberProfile, MatchItem, LoungeEvent, DateItinerary } from './types';
@@ -20,6 +21,11 @@ import { MemberProfile, MatchItem, LoungeEvent, DateItinerary } from './types';
 export default function App() {
   const [activeTab, setActiveTab] = useState<'discover' | 'lounge' | 'messages' | 'concierge'>('discover');
   
+  // Auth state
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
+  const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+
   // Personas
   const [personas, setPersonas] = useState<MemberProfile[]>(INITIAL_USER_PERSONAS);
   const [currentPersona, setCurrentPersona] = useState<MemberProfile>(INITIAL_USER_PERSONAS[0]);
@@ -101,8 +107,27 @@ export default function App() {
 
   // Update Persona profile
   const handleUpdateProfile = (updated: MemberProfile) => {
+    if (!isLoggedIn) {
+      setAuthMode('login');
+      setIsAuthOpen(true);
+      return;
+    }
     setCurrentPersona(updated);
     setPersonas((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+  };
+
+  // Handle Login Success
+  const handleLoginSuccess = (userProfile: MemberProfile) => {
+    setCurrentPersona(userProfile);
+    setIsLoggedIn(true);
+  };
+
+  // Handle Register Success
+  const handleRegisterSuccess = (newProfile: MemberProfile) => {
+    setPersonas((prev) => [newProfile, ...prev]);
+    setCurrentPersona(newProfile);
+    setMembers((prev) => [newProfile, ...prev]);
+    setIsLoggedIn(true);
   };
 
   // Start chat from modal
@@ -182,7 +207,49 @@ export default function App() {
         }}
         matchesCount={matches.length}
         unreadCount={matches.length > 0 ? 1 : 0}
+        isLoggedIn={isLoggedIn}
+        onOpenLogin={() => {
+          setAuthMode('login');
+          setIsAuthOpen(true);
+        }}
+        onOpenRegister={() => {
+          setAuthMode('register');
+          setIsAuthOpen(true);
+        }}
+        onSignOut={() => setIsLoggedIn(false)}
       />
+
+      {/* Guest Mode Notice when signed out */}
+      {!isLoggedIn && (
+        <div className="bg-gradient-to-r from-[#151515] via-[#1a1813] to-[#151515] border-b border-[#d4af37]/30 px-4 py-2.5 text-center text-xs">
+          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div className="flex items-center space-x-2 text-[#d4af37]">
+              <span className="font-serif uppercase tracking-wider font-semibold">Guest Preview:</span>
+              <span className="text-[#cccccc]">You are browsing Aura Privé in discovery mode.</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => {
+                  setAuthMode('login');
+                  setIsAuthOpen(true);
+                }}
+                className="px-3 py-1 rounded-sm border border-[#333333] text-[#e0e0e0] hover:text-[#d4af37] text-[11px] uppercase tracking-wider"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => {
+                  setAuthMode('register');
+                  setIsAuthOpen(true);
+                }}
+                className="px-3 py-1 rounded-sm bg-gradient-to-tr from-[#c5a059] to-[#8e6e3d] text-white font-semibold text-[11px] uppercase tracking-wider shadow-sm"
+              >
+                Apply for Membership
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Views */}
       <main className="flex-1 pb-16 md:pb-8">
@@ -271,6 +338,20 @@ export default function App() {
         onUpdateProfile={handleUpdateProfile}
         personas={personas}
         onSwitchPersona={handleSwitchPersona}
+        isLoggedIn={isLoggedIn}
+        onOpenLogin={() => {
+          setAuthMode('login');
+          setIsAuthOpen(true);
+        }}
+      />
+
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        initialMode={authMode}
+        onLoginSuccess={handleLoginSuccess}
+        onRegisterSuccess={handleRegisterSuccess}
+        availablePersonas={personas}
       />
 
     </div>
