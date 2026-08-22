@@ -1,0 +1,6 @@
+{
+  "name": "Aura Privé - Elite Dating",
+  "description": "An ultra-exclusive matchmaking club connecting accomplished gentlemen and hot women with verified credentials, VIP date planning, and AI Concierge.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
